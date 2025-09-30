@@ -65,6 +65,9 @@ class Settings:
     OPENAI_API_KEY: str = os.getenv('OPENAI_API_KEY', '')
     OPENAI_MODEL: str = os.getenv('OPENAI_MODEL', 'gpt-3.5-turbo')
     
+    # N8N Gateway
+    N8N_TIMEOUT: int = int(os.getenv('N8N_TIMEOUT', '120'))  # 2 minutos
+    
     @property
     def is_development(self) -> bool:
         """Verifica se está em ambiente de desenvolvimento"""

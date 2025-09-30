@@ -2,6 +2,7 @@ import requests
 import logging
 import os
 from typing import Dict, Any, Optional
+from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
@@ -30,13 +31,13 @@ class N8nGateway:
         
         logger.info(f"N8nGateway inicializado com URL: {self.base_url}")
     
-    def send_chat_input(self, chat_input: str, timeout: int = 30) -> Dict[str, Any]:
+    def send_chat_input(self, chat_input: str, timeout: int = None) -> Dict[str, Any]:
         """
         Envia uma mensagem para o webhook do n8n
         
         Args:
             chat_input: Texto da mensagem do usuário
-            timeout: Timeout da requisição em segundos (padrão: 30)
+            timeout: Timeout da requisição em segundos (padrão: 120 segundos / 2 minutos)
             
         Returns:
             Dict contendo a resposta do n8n
@@ -44,12 +45,16 @@ class N8nGateway:
         Raises:
             Exception: Se houver erro na comunicação com o n8n
         """
+        # Usa timeout configurado se não for especificado
+        if timeout is None:
+            timeout = settings.N8N_TIMEOUT
+            
         try:
             payload = {
                 "chatInput": chat_input
             }
             
-            logger.info(f"Enviando mensagem para n8n: {chat_input[:50]}...")
+            logger.info(f"Enviando mensagem para n8n: {chat_input[:50]}... (timeout: {timeout}s)")
             
             response = requests.post(
                 self.webhook_init_url,
