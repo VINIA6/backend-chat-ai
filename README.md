@@ -31,6 +31,9 @@ Ambiente completo com **modelos de linguagem rodando localmente**:
 - 🔄 **Soft Delete** - Deleção lógica de registros para recuperação posterior
 - 🐳 **Docker Ready** - Containerização completa com Docker Compose
 - 🏥 **Health Checks** - Monitoramento de saúde da aplicação e banco de dados
+- 🤖 **Gateway N8N Inteligente** - Integração robusta com workflows automatizados
+- ⏱️ **Timeout Configurável** - Timeouts personalizáveis para requisições longas
+- 📝 **Resposta Padronizada** - Formato consistente para facilitar integração frontend
 
 ## 🛠️ Tecnologias Utilizadas
 
@@ -60,7 +63,7 @@ Ambiente completo com **modelos de linguagem rodando localmente**:
 - **Docker & Docker Compose** - Containerização e orquestração
 - **Gunicorn** - Servidor WSGI para produção
 - **PostgreSQL 15** - Banco de dados relacional (Observatório da Indústria)
-- **N8N** - Workflow automation e integrações
+- **N8N** - Workflow automation e integrações com gateway inteligente
 - **Ollama** - LLMs locais (Gemma 3, Gemma 2)
 - **Mongo Express** - Interface administrativa para MongoDB
 
@@ -126,6 +129,11 @@ backend-chat-ai/
 │
 ├── utils/                      # Utilitários e helpers
 │
+├── gateways/                   # Gateways para integrações externas
+│   ├── n8n_gateway.py         # Gateway inteligente para N8N
+│   ├── test_n8n_gateway.py    # Testes do gateway N8N
+│   └── GATEWAY_USAGE.md       # Documentação de uso do gateway
+│
 ├── docker-compose.yml          # Orquestração de containers
 ├── Dockerfile                  # Imagem Docker da aplicação
 ├── requirements.txt            # Dependências Python
@@ -140,6 +148,11 @@ backend-chat-ai/
 Request → Routes → Controller → Use Case → Repository → Database
                                     ↓
 Response ← Routes ← Controller ← Use Case ← Repository
+
+Integração N8N:
+Controller → Gateway N8N → N8N Workflow → Ollama/PostgreSQL
+                                    ↓
+Response ← Controller ← Gateway N8N ← N8N Workflow
 ```
 
 ## 📡 Endpoints da API
@@ -245,6 +258,14 @@ Após executar com Docker Compose:
 - **Mongo Express** (Admin UI): http://localhost:8081
   - Usuário: `admin`
   - Senha: `admin123`
+- **N8N Workflows**: http://localhost:5678
+  - Usuário: `admin`
+  - Senha: `admin123`
+- **PostgreSQL** (Observatório): localhost:5432
+  - Usuário: `admin`
+  - Senha: `admin123`
+  - Database: `observatorio_industria`
+- **Ollama LLMs**: http://localhost:11434
 
 ## ⚙️ Configuração
 
@@ -272,6 +293,9 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 # OpenAI (opcional - para futuras integrações)
 OPENAI_API_KEY=your-openai-api-key
 OPENAI_MODEL=gpt-3.5-turbo
+
+# N8N Gateway
+N8N_TIMEOUT=120                    # Timeout em segundos (padrão: 2 minutos)
 
 # Logging
 LOG_LEVEL=INFO
@@ -313,6 +337,74 @@ O script de inicialização cria 3 usuários de exemplo:
 - `update_at` - Data de última atualização
 - `is_deleted` - Flag de soft delete
 
+## 🤖 Gateway N8N - Integração Inteligente
+
+### Visão Geral
+
+O **Gateway N8N** é um componente inteligente que facilita a comunicação entre a API Flask e os workflows automatizados do N8N. Ele foi projetado para ser robusto, configurável e fácil de usar no frontend.
+
+### ✨ Funcionalidades Principais
+
+- **⏱️ Timeout Configurável**: Timeout padrão de 2 minutos (120s), configurável via variável de ambiente
+- **📝 Resposta Padronizada**: Sempre retorna uma string única no campo `message` para facilitar o processamento no frontend
+- **🔄 Processamento Inteligente**: Extrai automaticamente a mensagem de diferentes formatos de resposta do N8N
+- **🛡️ Tratamento de Erros**: Gerenciamento robusto de timeouts, erros de conexão e falhas HTTP
+- **🔍 Debug Completo**: Mantém dados completos no campo `data` para análise
+
+### 📋 Formato de Resposta
+
+```json
+{
+  "success": true,
+  "message": "Resposta extraída do N8N como string única",
+  "data": {
+    "output": "Dados completos da resposta original"
+  },
+  "status_code": 200
+}
+```
+
+### ⚙️ Configuração
+
+```env
+# Timeout do Gateway N8N (em segundos)
+N8N_TIMEOUT=120                    # Padrão: 2 minutos
+N8N_URL=http://observatorio_n8n:5678  # URL do N8N
+```
+
+### 🎯 Uso no Frontend
+
+```javascript
+// Simples e direto!
+const response = await api.post('/api/message', {
+  talk_id: "talk_123",
+  content: "Mostre os dados de vendas"
+});
+
+if (response.success) {
+  // Usar diretamente a string da resposta
+  displayMessage(response.message);
+} else {
+  // Tratar erro
+  showError(response.message);
+}
+```
+
+### 🧪 Testando o Gateway
+
+```bash
+# Testar conexão e funcionalidade
+cd gateways
+python test_n8n_gateway.py
+
+# Atualizar apenas o container backend
+docker-compose up -d --build --force-recreate backend
+```
+
+### 📚 Documentação Detalhada
+
+Para exemplos completos de uso, veja: `gateways/GATEWAY_USAGE.md`
+
 ## 🧪 Testes
 
 ```bash
@@ -327,6 +419,9 @@ pytest --cov=. --cov-report=html
 
 # Executar testes específicos
 pytest tests/test_auth.py
+
+# Testar Gateway N8N
+python gateways/test_n8n_gateway.py
 ```
 
 ## 🔍 Desenvolvimento
@@ -359,6 +454,13 @@ docker-compose exec backend bash
 
 # Executar comandos no MongoDB
 docker-compose exec mongodb mongosh -u admin -p admin123 --authenticationDatabase admin
+
+# Atualizar apenas o container backend (após mudanças no código)
+docker-compose up -d --build --force-recreate backend
+
+# Reiniciar apenas um serviço específico
+docker-compose restart backend
+docker-compose restart n8n
 ```
 
 ## 🐳 Docker
@@ -412,9 +514,18 @@ docker-compose exec mongodb mongosh -u admin -p admin123 --authenticationDatabas
 - 🔒 Mantenha dependências atualizadas
 - 🔒 Implemente backup e disaster recovery
 
-## 📈 Melhorias Futuras
+## 📈 Melhorias Implementadas e Futuras
 
-### Roadmap
+### ✅ Implementado Recentemente
+
+- [x] **Gateway N8N Inteligente** - Integração robusta com workflows automatizados
+- [x] **Timeout Configurável** - Timeouts personalizáveis para requisições longas (2 minutos)
+- [x] **Resposta Padronizada** - Formato consistente com campo `message` único para frontend
+- [x] **Processamento Inteligente** - Extração automática de mensagens de diferentes formatos
+- [x] **Tratamento de Erros Robusto** - Gerenciamento completo de timeouts e falhas
+- [x] **Documentação Detalhada** - Guias completos de uso e integração
+
+### 🚀 Roadmap Futuro
 
 - [ ] Integração com OpenAI GPT para respostas inteligentes
 - [ ] Sistema de rate limiting
@@ -428,6 +539,9 @@ docker-compose exec mongodb mongosh -u admin -p admin123 --authenticationDatabas
 - [ ] CI/CD pipeline
 - [ ] Documentação OpenAPI/Swagger
 - [ ] Internacionalização (i18n)
+- [ ] Cache inteligente para respostas do N8N
+- [ ] Retry automático para falhas temporárias
+- [ ] Monitoramento de performance do gateway
 
 ## 🤝 Contribuindo
 
@@ -442,8 +556,7 @@ docker-compose exec mongodb mongosh -u admin -p admin123 --authenticationDatabas
 Este projeto está sob a licença MIT. Veja o arquivo `LICENSE` para mais detalhes.
 
 ## 👨‍💻 Autor
-
-Desenvolvido com ❤️ para criar experiências conversacionais inteligentes.
+Vinícius de Assis Azevedo
 
 ---
 

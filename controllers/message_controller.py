@@ -73,15 +73,13 @@ class MessageController:
             # 2. Enviar para o n8n e obter resposta
             n8n_response = self.n8n_gateway.send_chat_input(content)
             
-            # 3. Processar resposta do n8n
+            # 3. Processar resposta do n8n (usando o novo formato padronizado)
             if n8n_response['success']:
-                # Extrair a resposta do n8n
-                n8n_data = n8n_response.get('data', {})
-                # Tentar extrair a resposta do campo 'output' ou 'response' ou usar o data completo
-                bot_response = n8n_data.get('output', n8n_data.get('response', str(n8n_data)))
+                # Usar diretamente o campo 'message' padronizado
+                bot_response = n8n_response.get('message', 'Resposta não disponível')
             else:
-                # Se falhar, usar mensagem de erro amigável
-                bot_response = f"Desculpe, não consegui processar sua mensagem no momento. Erro: {n8n_response.get('error', 'Erro desconhecido')}"
+                # Se falhar, usar mensagem de erro amigável do campo 'message'
+                bot_response = n8n_response.get('message', 'Desculpe, não consegui processar sua mensagem no momento.')
             
             # 4. Criar mensagem do bot com a resposta
             bot_message = self.message_use_case.create_message(
