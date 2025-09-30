@@ -123,6 +123,7 @@ services:
       - MONGODB_DATABASE=chatai
       - JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
       - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://chatai-five-chi.vercel.app
+      - N8N_URL=http://observatorio_n8n:5678
     ports:
       - "5001:5000"
     volumes:

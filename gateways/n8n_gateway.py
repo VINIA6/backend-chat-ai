@@ -1,5 +1,6 @@
 import requests
 import logging
+import os
 from typing import Dict, Any, Optional
 
 logger = logging.getLogger(__name__)
@@ -7,17 +8,27 @@ logger = logging.getLogger(__name__)
 class N8nGateway:
     """
     Gateway para comunicação com o n8n via webhook
+    
+    IMPORTANTE: Quando rodando dentro do Docker, use o nome do container (observatorio_n8n)
+    para comunicação interna entre containers na mesma rede.
     """
     
-    def __init__(self, base_url: str = "http://localhost:5678"):
+    def __init__(self, base_url: str = None):
         """
         Inicializa o gateway do n8n
         
         Args:
-            base_url: URL base do n8n (padrão: http://localhost:5678)
+            base_url: URL base do n8n. Se None, usa variável de ambiente N8N_URL
+                     ou padrão 'http://observatorio_n8n:5678' para Docker
         """
+        if base_url is None:
+            # Prioridade: variável de ambiente > nome do container Docker > localhost
+            base_url = os.getenv('N8N_URL', 'http://observatorio_n8n:5678')
+        
         self.base_url = base_url
         self.webhook_init_url = f"{base_url}/webhook-test/n8n/init"
+        
+        logger.info(f"N8nGateway inicializado com URL: {self.base_url}")
     
     def send_chat_input(self, chat_input: str, timeout: int = 30) -> Dict[str, Any]:
         """
