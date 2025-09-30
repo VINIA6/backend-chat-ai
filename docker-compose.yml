@@ -1,0 +1,97 @@
+version: '3.8'
+
+services:
+  # MongoDB Database
+  mongodb:
+    image: mongo:7.0
+    container_name: chatai_mongodb
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: admin
+      MONGO_INITDB_ROOT_PASSWORD: admin123
+      MONGO_INITDB_DATABASE: chatai
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - chatai_network
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatai_backend
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=development
+      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/chatai?authSource=admin
+      - MONGODB_DATABASE=chatai
+      - JWT_SECRET_KEY=your-super-secret-jwt-key-change-in-production
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5173,https://chatai-five-chi.vercel.app
+    ports:
+      - "5001:5000"
+    volumes:
+      - .:/app
+      - /app/__pycache__
+      - /app/venv
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - chatai_network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # Inicializador do banco (executado uma vez)
+  db_init:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: chatai_db_init
+    environment:
+      - MONGODB_URI=mongodb://admin:admin123@mongodb:27017/chatai?authSource=admin
+      - MONGODB_DATABASE=chatai
+    command: ["python", "data/init_database.py"]
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - chatai_network
+    restart: "no"
+
+  # MongoDB Admin Interface (opcional)
+  mongo-express:
+    image: mongo-express:1.0.0
+    container_name: chatai_mongo_express
+    restart: unless-stopped
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: admin
+      ME_CONFIG_MONGODB_ADMINPASSWORD: admin123
+      ME_CONFIG_MONGODB_URL: mongodb://admin:admin123@mongodb:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin123
+    ports:
+      - "8081:8081"
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    networks:
+      - chatai_network
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  chatai_network:
+    driver: bridge
