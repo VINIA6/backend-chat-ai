@@ -31,6 +31,42 @@ class N8nGateway:
         
         logger.info(f"N8nGateway inicializado com URL: {self.base_url}")
     
+    def _extract_message(self, response_data: Any) -> str:
+        """
+        Extrai a mensagem de resposta do N8N em diferentes formatos possíveis
+        
+        Args:
+            response_data: Dados da resposta do N8N
+            
+        Returns:
+            String com a mensagem extraída
+        """
+        # Se a resposta já é uma string, retornar diretamente
+        if isinstance(response_data, str):
+            return response_data
+        
+        # Se for um dicionário, tentar extrair de campos conhecidos
+        if isinstance(response_data, dict):
+            # Tentar campo 'output' (formato atual do N8N)
+            if 'output' in response_data:
+                return str(response_data['output'])
+            
+            # Tentar outros campos comuns
+            for field in ['message', 'text', 'response', 'result', 'answer', 'content']:
+                if field in response_data:
+                    return str(response_data[field])
+            
+            # Se tiver apenas um campo, retornar seu valor
+            if len(response_data) == 1:
+                return str(list(response_data.values())[0])
+        
+        # Se for uma lista, tentar extrair da primeira posição
+        if isinstance(response_data, list) and len(response_data) > 0:
+            return self._extract_message(response_data[0])
+        
+        # Fallback: converter para string
+        return str(response_data)
+    
     def send_chat_input(self, chat_input: str, timeout: int = None) -> Dict[str, Any]:
         """
         Envia uma mensagem para o webhook do n8n
@@ -70,9 +106,14 @@ class N8nGateway:
             try:
                 response_data = response.json()
                 logger.info(f"Resposta recebida do n8n com sucesso")
+                
+                # Extrair a mensagem de resposta em diferentes formatos possíveis
+                message = self._extract_message(response_data)
+                
                 return {
                     'success': True,
-                    'data': response_data,
+                    'message': message,  # String única para o frontend
+                    'data': response_data,  # Dados completos para debug
                     'status_code': response.status_code
                 }
             except ValueError:
@@ -80,6 +121,7 @@ class N8nGateway:
                 logger.warning("Resposta do n8n não é JSON válido")
                 return {
                     'success': True,
+                    'message': response.text,  # String única para o frontend
                     'data': {'response': response.text},
                     'status_code': response.status_code
                 }
@@ -89,6 +131,7 @@ class N8nGateway:
             logger.error(error_msg)
             return {
                 'success': False,
+                'message': error_msg,  # String única para o frontend
                 'error': error_msg,
                 'data': None
             }
@@ -98,6 +141,7 @@ class N8nGateway:
             logger.error(error_msg)
             return {
                 'success': False,
+                'message': error_msg,  # String única para o frontend
                 'error': error_msg,
                 'data': None
             }
@@ -107,6 +151,7 @@ class N8nGateway:
             logger.error(error_msg)
             return {
                 'success': False,
+                'message': error_msg,  # String única para o frontend
                 'error': error_msg,
                 'status_code': e.response.status_code,
                 'data': None
@@ -117,6 +162,7 @@ class N8nGateway:
             logger.error(error_msg)
             return {
                 'success': False,
+                'message': error_msg,  # String única para o frontend
                 'error': error_msg,
                 'data': None
             }

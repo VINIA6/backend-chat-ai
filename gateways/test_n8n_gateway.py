@@ -38,10 +38,11 @@ def test_n8n_gateway():
     if response['success']:
         print("  ✓ Mensagem enviada com sucesso!")
         print(f"  Status Code: {response.get('status_code', 'N/A')}")
-        print(f"  Resposta: {response.get('data', {})}")
+        print(f"\n  📝 Mensagem (para frontend): {response.get('message', 'N/A')}")
+        print(f"\n  🔍 Dados completos (debug): {response.get('data', {})}")
     else:
         print("  ✗ Erro ao enviar mensagem")
-        print(f"  Erro: {response.get('error', 'Erro desconhecido')}")
+        print(f"  Erro: {response.get('message', 'Erro desconhecido')}")
     
     print("\n" + "="*60)
     print("Teste concluído")
