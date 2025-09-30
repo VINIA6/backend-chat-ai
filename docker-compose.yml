@@ -1,6 +1,113 @@
 version: '3.8'
 
 services:
+  # PostgreSQL Database - Observatório da Indústria
+  postgres:
+    image: postgres:15-alpine
+    container_name: observatorio_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: admin123
+      POSTGRES_DB: observatorio_industria
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/sql:/docker-entrypoint-initdb.d
+    networks:
+      - chatai_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d observatorio_industria"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # N8N - Workflow Automation
+  n8n:
+    image: n8nio/n8n:latest
+    container_name: observatorio_n8n
+    restart: unless-stopped
+    environment:
+      # Autenticação
+      - N8N_BASIC_AUTH_ACTIVE=true
+      - N8N_BASIC_AUTH_USER=admin
+      - N8N_BASIC_AUTH_PASSWORD=admin123
+      
+      # Configurações de Rede
+      - N8N_HOST=0.0.0.0
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=http
+      - N8N_LISTEN_ADDRESS=0.0.0.0
+      
+      # Webhooks - IMPORTANTE para ativar workflows
+      - WEBHOOK_URL=http://localhost:5678/
+      - N8N_EDITOR_BASE_URL=http://localhost:5678
+      - WEBHOOK_TUNNEL_URL=http://localhost:5678/
+      - N8N_PAYLOAD_SIZE_MAX=16
+      
+      # Runners e Execução
+      - N8N_RUNNERS_ENABLED=true
+      - EXECUTIONS_MODE=regular
+      - EXECUTIONS_PROCESS=main
+      
+      # Timezone
+      - GENERIC_TIMEZONE=America/Sao_Paulo
+      - TZ=America/Sao_Paulo
+      
+      # Desabilitar telemetria
+      - N8N_METRICS=false
+      - N8N_DIAGNOSTICS_ENABLED=false
+      - N8N_VERSION_NOTIFICATIONS_ENABLED=false
+      - N8N_HIRING_BANNER_ENABLED=false
+      
+      # Permissões
+      - N8N_ENFORCE_SETTINGS_FILE_PERMISSIONS=false
+      
+      # PostgreSQL para N8N usar como database interno
+      - DB_TYPE=postgresdb
+      - DB_POSTGRESDB_HOST=postgres
+      - DB_POSTGRESDB_PORT=5432
+      - DB_POSTGRESDB_DATABASE=n8n
+      - DB_POSTGRESDB_USER=admin
+      - DB_POSTGRESDB_PASSWORD=admin123
+    ports:
+      - "5678:5678"
+    volumes:
+      - n8n_data:/home/node/.n8n
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - chatai_network
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:5678/healthz"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Ollama - LLM Local (Gemma, Llama, etc)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: observatorio_ollama
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    networks:
+      - chatai_network
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    # Remova o comentário abaixo se você tiver GPU NVIDIA
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: all
+    #           capabilities: [gpu]
+
   # MongoDB Database
   mongodb:
     image: mongo:7.0
@@ -89,6 +196,12 @@ services:
       - chatai_network
 
 volumes:
+  postgres_data:
+    driver: local
+  n8n_data:
+    driver: local
+  ollama_data:
+    driver: local
   mongodb_data:
     driver: local
 

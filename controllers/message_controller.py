@@ -5,12 +5,14 @@ from config.database import db_config
 from auth import token_required
 from bson import json_util
 import json
+from gateways.n8n_gateway import N8nGateway
 
 class MessageController:
     def __init__(self):
         db = db_config.get_database()
         message_repository = MessageRepository(db)
         self.message_use_case = MessageUseCase(message_repository)
+        self.n8n_gateway = N8nGateway()
 
     @token_required
     def get_messages_by_talk(self):
@@ -68,8 +70,20 @@ class MessageController:
                 user_id=user_id
             )
 
-            # 2. Criar resposta do bot
-            bot_response = "Aguardando fluxo n8n ser implementado."
+            # 2. Enviar para o n8n e obter resposta
+            n8n_response = self.n8n_gateway.send_chat_input(content)
+            
+            # 3. Processar resposta do n8n
+            if n8n_response['success']:
+                # Extrair a resposta do n8n
+                n8n_data = n8n_response.get('data', {})
+                # Tentar extrair a resposta do campo 'output' ou 'response' ou usar o data completo
+                bot_response = n8n_data.get('output', n8n_data.get('response', str(n8n_data)))
+            else:
+                # Se falhar, usar mensagem de erro amigável
+                bot_response = f"Desculpe, não consegui processar sua mensagem no momento. Erro: {n8n_response.get('error', 'Erro desconhecido')}"
+            
+            # 4. Criar mensagem do bot com a resposta
             bot_message = self.message_use_case.create_message(
                 content=bot_response,
                 message_type='bot',
@@ -77,13 +91,14 @@ class MessageController:
                 user_id=user_id
             )
 
-            # 3. Buscar todas as mensagens da conversa para retornar
+            # 5. Buscar todas as mensagens da conversa para retornar
             all_messages = self.message_use_case.get_messages_by_talk_and_user(talk_id, user_id)
             messages_json = json.loads(json_util.dumps(all_messages))
 
-            # 4. Retornar resposta com as mensagens
+            # 6. Retornar resposta com as mensagens
             response = {
-                'messages': messages_json
+                'messages': messages_json,
+                'n8n_status': 'success' if n8n_response['success'] else 'error'
             }
 
             return jsonify(response), 201

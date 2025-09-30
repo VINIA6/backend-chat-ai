@@ -6,6 +6,22 @@ Backend completo para aplicação de chat com inteligência artificial, desenvol
 
 O **ChatAI Backend** é uma API RESTful robusta e escalável que gerencia conversas entre usuários e assistentes virtuais. O sistema foi construído seguindo os princípios de **Clean Architecture**, garantindo separação de responsabilidades, testabilidade e manutenibilidade do código.
 
+### 🏭 Observatório da Indústria - Simulação de Dados
+
+Este projeto inclui um **banco de dados PostgreSQL completo** simulando o cenário de negócios do **Observatório da Indústria**, com **200.000+ registros** distribuídos em 18 tabelas, integrando dados de:
+- **ERP**: Faturamento e Notas Fiscais
+- **CRM**: Gestão de Clientes e Oportunidades
+- **Planilhas Manuais**: Dados do time comercial em campo
+
+### 🤖 IA Local com Ollama
+
+Ambiente completo com **modelos de linguagem rodando localmente**:
+- **Gemma 3 1B** e **Gemma 2 2B** instalados e funcionais
+- API REST para integração com Python, N8N e outros serviços
+- Análise de dados, geração de relatórios e assistente SQL com IA
+
+👉 **Documentação completa**: Ver `POSTGRES_SETUP.md`, `N8N_GUIDE.md` e `OLLAMA_GUIDE.md`
+
 ### Principais Funcionalidades
 
 - 🔐 **Autenticação JWT** - Sistema seguro de login e gestão de tokens
@@ -43,6 +59,9 @@ O **ChatAI Backend** é uma API RESTful robusta e escalável que gerencia conver
 ### Infraestrutura
 - **Docker & Docker Compose** - Containerização e orquestração
 - **Gunicorn** - Servidor WSGI para produção
+- **PostgreSQL 15** - Banco de dados relacional (Observatório da Indústria)
+- **N8N** - Workflow automation e integrações
+- **Ollama** - LLMs locais (Gemma 3, Gemma 2)
 - **Mongo Express** - Interface administrativa para MongoDB
 
 ### Futuras Integrações

@@ -7,6 +7,7 @@ from config.database import db_config
 from auth import token_required
 from bson import json_util
 import json
+from gateways.n8n_gateway import N8nGateway
 
 class TalkController:
     def __init__(self):
@@ -15,6 +16,7 @@ class TalkController:
         message_repository = MessageRepository(db)
         self.talk_use_case = TalkUseCase(talk_repository)
         self.message_use_case = MessageUseCase(message_repository)
+        self.n8n_gateway = N8nGateway()
 
     @token_required
     def get_talks_by_user(self):
@@ -67,8 +69,20 @@ class TalkController:
                 user_id=user_id
             )
 
-            # 3. Criar resposta do bot
-            bot_response = "Aguardando fluxo n8n ser implementado."
+            # 3. Enviar para o n8n e obter resposta
+            n8n_response = self.n8n_gateway.send_chat_input(message)
+            
+            # 4. Processar resposta do n8n
+            if n8n_response['success']:
+                # Extrair a resposta do n8n
+                n8n_data = n8n_response.get('data', {})
+                # Tentar extrair a resposta do campo 'output' ou 'response' ou usar o data completo
+                bot_response = n8n_data.get('output', n8n_data.get('response', str(n8n_data)))
+            else:
+                # Se falhar, usar mensagem de erro amigável
+                bot_response = f"Desculpe, não consegui processar sua mensagem no momento. Erro: {n8n_response.get('error', 'Erro desconhecido')}"
+            
+            # 5. Criar mensagem do bot com a resposta
             bot_message = self.message_use_case.create_message(
                 content=bot_response,
                 message_type='bot',
@@ -76,18 +90,19 @@ class TalkController:
                 user_id=user_id
             )
 
-            # 4. Buscar todas as mensagens da conversa para retornar
+            # 6. Buscar todas as mensagens da conversa para retornar
             all_messages = self.message_use_case.get_messages_by_talk_and_user(talk_id, user_id)
             messages_json = json.loads(json_util.dumps(all_messages))
 
-            # 5. Retornar resposta com dados da conversa e mensagens
+            # 7. Retornar resposta com dados da conversa e mensagens
             response = {
                 'talk': {
                     'talk_id': talk_id,
                     'name': talk_name,
                     'created_at': talk['create_at'].isoformat()
                 },
-                'messages': messages_json
+                'messages': messages_json,
+                'n8n_status': 'success' if n8n_response['success'] else 'error'
             }
 
             return jsonify(response), 201

@@ -25,6 +25,18 @@ class Settings:
     MONGODB_URI: str = os.getenv('MONGODB_URI', 'mongodb://admin:admin123@localhost:27017/chatai?authSource=admin')
     MONGODB_DATABASE: str = os.getenv('MONGODB_DATABASE', 'chatai')
     
+    # PostgreSQL - Observatório da Indústria
+    POSTGRES_HOST: str = os.getenv('POSTGRES_HOST', 'localhost')
+    POSTGRES_PORT: str = os.getenv('POSTGRES_PORT', '5432')
+    POSTGRES_USER: str = os.getenv('POSTGRES_USER', 'admin')
+    POSTGRES_PASSWORD: str = os.getenv('POSTGRES_PASSWORD', 'admin123')
+    POSTGRES_DB: str = os.getenv('POSTGRES_DB', 'observatorio_industria')
+    
+    @property
+    def postgres_uri(self) -> str:
+        """Retorna a URI de conexão do PostgreSQL"""
+        return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
+    
     # CORS
     CORS_ORIGINS: List[str] = field(default_factory=lambda: os.getenv('CORS_ORIGINS', 'http://localhost:3000,http://localhost:5173,http://localhost:5174').split(','))
     
